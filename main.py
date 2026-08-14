@@ -11,7 +11,7 @@ t_max = 20.0
 t_steps = 100
 t_eval = np.linspace(0, t_max, t_steps)
 
-N = 256
+N = 2048 # 256
 L = 100.0 # -5 ->5
 x = np.linspace(-L/2, L/2, N)
 dx = x[1] - x[0]
@@ -21,14 +21,30 @@ def compute_uxx(u, dx): # laplacian numerical method
     u_left = np.roll(u, 1)
     return (u_right - 2*u + u_left) / (dx**2)
 
+# def pde_derivs(t, y_real):
+#     u = y_real[:N] + 1j * y_real[N:]
+#     u_xx = compute_uxx(u, dx)
+#     u_sq = np.abs(u)**2
+
+
+#     # isolating
+#     # du_dt = i/2 * u_xx + i*|u|^2*u - eps*|u|^2*u
+#     du_dt = 0.5j * u_xx + 1j * u_sq * u - epsilon * u_sq * u
+
+#     return np.concatenate([du_dt.real, du_dt.imag])
+
+
+# Pre-compute wave numbers outside the derivative function for efficiency
+k_vec = 2 * np.pi * np.fft.fftfreq(N, d=dx)
+k_squared = k_vec**2
+
 def pde_derivs(t, y_real):
     u = y_real[:N] + 1j * y_real[N:]
-    u_xx = compute_uxx(u, dx)
+
+    # Spectral Laplacian
+    u_xx = np.fft.ifft(-k_squared * np.fft.fft(u))
     u_sq = np.abs(u)**2
 
-
-    # isolating
-    # du_dt = i/2 * u_xx + i*|u|^2*u - eps*|u|^2*u
     du_dt = 0.5j * u_xx + 1j * u_sq * u - epsilon * u_sq * u
 
     return np.concatenate([du_dt.real, du_dt.imag])
@@ -49,10 +65,6 @@ print("log: Running PDE Simulation...")
 sol_pde = solve_ivp(pde_derivs, (0, t_max), y_init, t_eval=t_eval, method='RK45', rtol=1e-6, atol=1e-8)
 u_history = sol_pde.y[:N, :].T + 1j * sol_pde.y[N:, :].T
 print("log: PDE Simulation completed.")
-
-
-
-
 
 
 # --- Step 2: Decoupled Parameter Fitting ---
@@ -120,6 +132,10 @@ for i, t_val in enumerate(t_eval):
     c_history_fit.append(c_f)
     phi_history_fit.append(phi_f)
 
+
+phi_history_fit = np.unwrap(phi_history_fit)
+phi_history_fit = phi_history_fit - phi_history_fit[0]
+
 print("Parameter Fitting completed.")
 
 
@@ -163,6 +179,10 @@ for name, pde_val, ode_val, ax in params_to_plot:
     ax.set_xlabel("Time (t)")
     ax.legend()
     ax.grid(True)
+
+    # Add this condition to fix the speed axis scaling
+    if name == "Speed (c)":
+        ax.set_ylim(0.09, 0.11)
 
 plt.tight_layout()
 plt.savefig("./nls_model2_comparison.png", dpi=150)
