@@ -26,3 +26,9 @@ The project extracts soliton parameters from numerical PDE data and compares the
 Run the main script to execute the simulation and generate the comparison plots:
 ```bash
 python main.py
+
+
+```
+## Reference 
+
+Rossi, J., Carretero-González, R. & Kevrekidis, P.G. Non-conservative variational approximation for nonlinear Schrödinger equations. Eur. Phys. J. Plus 135, 854 (2020). https://doi.org/10.1140/epjp/s13360-020-00689-x
